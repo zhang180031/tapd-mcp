@@ -1,14 +1,14 @@
+import { homedir } from "node:os";
+import { join } from "node:path";
+
 export interface TapdConfig {
   webBaseUrl: string;
   maxRequestsPerMinute: number;
   requestTimeoutMs: number;
-  /**
-   * Optional user-owned business guidance. When it is unavailable, the MCP
-   * still starts with its protocol and safety instructions only.
-   */
-  userPromptPath?: string;
-  /** Optional cross-platform JSON store for the persisted TAPD Web session. */
-  sessionStorePath?: string;
+  /** User-owned business guidance. A missing file is treated as no guidance. */
+  userPromptPath: string;
+  /** Cross-platform JSON store for the persisted TAPD Web session. */
+  sessionStorePath: string;
   /** Optional Chrome user-data directory override for the one-time DevTools capture. */
   chromeUserDataDir?: string;
 }
@@ -20,6 +20,24 @@ export class TapdConfigurationError extends Error {
 function optionalTrimmed(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
   return trimmed || undefined;
+}
+
+/**
+ * Resolve the per-user data directory without relying on a package install
+ * path. This makes `npx` execution restart-safe across macOS, Windows, and
+ * Linux while preserving environment-variable overrides for managed hosts.
+ */
+export function resolveTapdDataDirectory(env: NodeJS.ProcessEnv = process.env): string {
+  const configured = optionalTrimmed(env.TAPD_DATA_DIR);
+  if (configured) return configured;
+
+  if (process.platform === "win32") {
+    return join(optionalTrimmed(env.APPDATA) ?? join(homedir(), "AppData", "Roaming"), "tapd-mcp");
+  }
+  if (process.platform === "darwin") {
+    return join(homedir(), "Library", "Application Support", "tapd-mcp");
+  }
+  return join(optionalTrimmed(env.XDG_STATE_HOME) ?? join(homedir(), ".local", "state"), "tapd-mcp");
 }
 
 function positiveInteger(name: string, value: string | undefined, fallback: number): number {
@@ -54,12 +72,13 @@ export function requireWorkspaceId(value: string): string {
 }
 
 export function loadTapdConfig(env: NodeJS.ProcessEnv = process.env): TapdConfig {
+  const dataDirectory = resolveTapdDataDirectory(env);
   return {
     webBaseUrl: tapdBaseUrl(env.TAPD_WEB_BASE_URL),
     maxRequestsPerMinute: positiveInteger("TAPD_MAX_REQUESTS_PER_MINUTE", env.TAPD_MAX_REQUESTS_PER_MINUTE, 60),
     requestTimeoutMs: positiveInteger("TAPD_REQUEST_TIMEOUT_MS", env.TAPD_REQUEST_TIMEOUT_MS, 20_000),
-    userPromptPath: optionalTrimmed(env.TAPD_USER_PROMPT_PATH),
-    sessionStorePath: optionalTrimmed(env.TAPD_SESSION_STORE_PATH),
+    userPromptPath: optionalTrimmed(env.TAPD_USER_PROMPT_PATH) ?? join(dataDirectory, "prompt.md"),
+    sessionStorePath: optionalTrimmed(env.TAPD_SESSION_STORE_PATH) ?? join(dataDirectory, "session.json"),
     chromeUserDataDir: optionalTrimmed(env.TAPD_CHROME_USER_DATA_DIR),
   };
 }

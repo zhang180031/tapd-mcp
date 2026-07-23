@@ -28,43 +28,67 @@ flowchart LR
 
 Chrome 只用于会话交接：服务不会启动新的浏览器、创建额外 Profile、读取 Chrome Cookie 数据库，或把会话凭据放入 MCP 参数、响应和日志。会话 JSON 是唯一允许的本地持久化位置；收到 401、403 或登录页后会被删除，后续操作必须重新交接会话。
 
-## 前置条件
+## 一行接入（推荐）
 
 - Node.js 20 或更高版本
 - 已安装并登录 TAPD 的 Chrome
 - MCP 客户端（如 Codex）能启动本地 Node.js 进程
 - 对目标 TAPD 空间有相应读写权限
 
-## 安装与启动
+无需克隆仓库、`npm install` 或全局安装。将下面一行作为 MCP 服务命令即可；`npx` 会在首次启动下载 `@zhang180031/tapd-mcp`，后续复用本机缓存。
+
+```toml
+[mcp_servers.tapd]
+command = "npx"
+args = ["-y", "@zhang180031/tapd-mcp"]
+```
+
+如果 MCP 客户端提供命令行添加入口，等价的服务命令是：
 
 ```bash
-git clone <your-repository-url> tapd-mcp
+npx -y @zhang180031/tapd-mcp
+```
+
+包会将会话和可选业务提示词保存到当前操作系统的用户数据目录，而不是 `npx` 的临时目录或仓库：
+
+| 系统 | 默认数据目录 |
+| --- | --- |
+| macOS | `~/Library/Application Support/tapd-mcp` |
+| Windows | `%APPDATA%\tapd-mcp` |
+| Linux | `$XDG_STATE_HOME/tapd-mcp`，未设置时为 `~/.local/state/tapd-mcp` |
+
+其中 `session.json` 含有 TAPD Web 会话凭据，只允许当前用户读写；`prompt.md` 不存在或为空时服务仍会正常启动。**不要**把该目录同步、提交或分享给他人。
+
+### Codex 完整示例
+
+将以下内容写入 Codex 的 MCP 配置：
+
+```toml
+[mcp_servers.tapd]
+command = "npx"
+args = ["-y", "@zhang180031/tapd-mcp"]
+
+[mcp_servers.tapd.env]
+TAPD_WEB_BASE_URL = "https://www.tapd.cn"
+TAPD_MAX_REQUESTS_PER_MINUTE = "60"
+TAPD_REQUEST_TIMEOUT_MS = "20000"
+```
+
+首次启动后，按“首次登录与会话生命周期”完成一次已有 Chrome TAPD 标签页的会话交接。之后服务会从默认 `session.json` 自动恢复；只有 TAPD 返回认证失效时才需要重新交接。
+
+### 从源码运行（开发者）
+
+```bash
+git clone https://github.com/zhang180031/tapd-mcp.git
 cd tapd-mcp
+git checkout main
+git pull --ff-only
 npm ci
 npm run build
 npm test
 ```
 
 构建完成后，入口文件为 `dist/src/index.js`。项目使用 stdio 传输 MCP JSON-RPC，标准输出不会写入调试日志。
-
-### Codex MCP 配置
-
-复制 [codex.mcp.config.example.toml](codex.mcp.config.example.toml) 中的配置到 MCP 客户端配置，并把所有 `/absolute/path/...` 替换成真实的绝对路径：
-
-```toml
-[mcp_servers.tapd]
-command = "node"
-args = ["/absolute/path/to/tapd-mcp/dist/src/index.js"]
-
-[mcp_servers.tapd.env]
-TAPD_WEB_BASE_URL = "https://www.tapd.cn"
-TAPD_MAX_REQUESTS_PER_MINUTE = "60"
-TAPD_REQUEST_TIMEOUT_MS = "20000"
-TAPD_USER_PROMPT_PATH = "/absolute/path/to/tapd-mcp/work-item-prompt.md"
-TAPD_SESSION_STORE_PATH = "/absolute/path/to/tapd-mcp/session.json"
-```
-
-`TAPD_USER_PROMPT_PATH` 和 `TAPD_SESSION_STORE_PATH` 都是可选项；推荐设置后者，使 MCP 重启后仍能恢复有效会话。不要将会话文件放在仓库内。
 
 ### 环境变量
 
@@ -75,8 +99,9 @@ TAPD_SESSION_STORE_PATH = "/absolute/path/to/tapd-mcp/session.json"
 | `TAPD_WEB_BASE_URL` | `https://www.tapd.cn` | 固定为 TAPD HTTPS Origin；其他地址会被拒绝 |
 | `TAPD_MAX_REQUESTS_PER_MINUTE` | `60` | 单个进程的请求速率上限 |
 | `TAPD_REQUEST_TIMEOUT_MS` | `20000` | TAPD HTTP 请求超时，单位毫秒 |
-| `TAPD_USER_PROMPT_PATH` | 未设置 | 可选的、用户自行维护的业务写作规范 Markdown |
-| `TAPD_SESSION_STORE_PATH` | 未设置 | 可选的会话 JSON 路径；内容包含敏感凭据 |
+| `TAPD_DATA_DIR` | 系统用户数据目录下的 `tapd-mcp` | 同时覆盖默认 `session.json` 与 `prompt.md` 的目录 |
+| `TAPD_USER_PROMPT_PATH` | `<TAPD_DATA_DIR>/prompt.md` | 可选的、用户自行维护的业务写作规范 Markdown |
+| `TAPD_SESSION_STORE_PATH` | `<TAPD_DATA_DIR>/session.json` | 本地会话 JSON 路径；内容包含敏感凭据 |
 | `TAPD_CHROME_USER_DATA_DIR` | 系统 Chrome 默认目录 | 仅会话交接时用于定位 Chrome DevTools 端点 |
 
 ## 首次登录与会话生命周期
@@ -97,7 +122,7 @@ TAPD_SESSION_STORE_PATH = "/absolute/path/to/tapd-mcp/session.json"
 
 ## 可选的业务提示词
 
-协议、安全和字段规则内置在 MCP；**标题格式、业务模块、需求模板等业务规则不内置**。若配置了 `TAPD_USER_PROMPT_PATH`，服务只在启动时读取该 Markdown，并把全文作为 MCP 客户端的业务写作指导。
+协议、安全和字段规则内置在 MCP；**标题格式、业务模块、需求模板等业务规则不内置**。服务启动时会读取 `TAPD_USER_PROMPT_PATH`（默认是数据目录中的 `prompt.md`），并把全文作为 MCP 客户端的业务写作指导。
 
 文件不存在、不可读或为空时，MCP 仍会启动，只是没有额外业务规范。修改后需要重启 MCP 连接。提示词文件中不得保存 Cookie、Token、密码、JWT 或其他凭据。
 
@@ -260,6 +285,19 @@ TAPD_E2E=1 TAPD_E2E_WORKSPACE_ID=12345678 npm run test:e2e:tapd
 
 真实 E2E 会创建临时工单并执行清理；不要指向生产空间或包含真实业务数据的空间。
 
+## 发布 npm 包
+
+发布账号需要在 npmjs.com 拥有 `@zhang180031` 作用域。包名使用 `@zhang180031/tapd-mcp`，因为无作用域的 `tapd-mcp` 已被其他发布者占用。
+
+```bash
+npm run check
+npm test
+npm pack --dry-run
+npm publish --access public
+```
+
+发布前必须检查包内容中没有 `.env`、`session.json`、Cookie、Token、截图、日志、真实客户数据或私有接口抓包材料。`files` 白名单只发布运行所需的编译产物、README 和配置示例。
+
 ## GitHub 发布前检查
 
 1. 确认 `git status --ignored` 中没有会话 JSON、`.env`、截图、日志或构建产物。
@@ -272,5 +310,5 @@ TAPD_E2E=1 TAPD_E2E_WORKSPACE_ID=12345678 npm run test:e2e:tapd
 
 - 本项目面向 TAPD Web 私有接口，不保证与 TAPD 官方 Open API 等价，也不承诺未来兼容。
 - 当前仅开放已验证的需求/Bug 核心字段；状态必须经工作流工具变更，其他字段需完成接口契约验证后再加入。
-- `TAPD_SESSION_STORE_PATH` 未设置时会话只存在内存，MCP 重启后需重新交接。
+- 默认会话会保存到用户数据目录；若禁用或删除 `session.json`，MCP 重启后需重新交接。
 - Markdown 渲染器实现的是安全、有限的常用 Markdown 子集，不是通用 HTML 执行环境。

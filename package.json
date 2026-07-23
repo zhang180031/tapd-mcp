@@ -1,8 +1,34 @@
 {
-  "name": "tapd-mcp",
-  "version": "0.4.0",
+  "name": "@zhang180031/tapd-mcp",
+  "version": "0.5.0",
   "description": "A session-backed MCP server for TAPD Web story and bug APIs.",
   "type": "module",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "tapd",
+    "tencent",
+    "agile",
+    "bug-tracker"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhang180031/tapd-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zhang180031/tapd-mcp/issues"
+  },
+  "homepage": "https://github.com/zhang180031/tapd-mcp#readme",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "files": [
+    "dist/src",
+    "README.md",
+    ".env.example",
+    "codex.mcp.config.example.toml"
+  ],
   "bin": {
     "tapd-mcp": "dist/src/index.js"
   },
@@ -15,7 +41,9 @@
     "test:unit": "npm run build && node --test dist/test/*.test.js",
     "test:integration": "npm run build && node --test dist/test/*.integration.js",
     "test:e2e:tapd": "npm run build && node --test dist/test/*.e2e.js",
-    "check": "tsc --noEmit -p tsconfig.json"
+    "check": "tsc --noEmit -p tsconfig.json",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run check && npm test"
   },
   "engines": {
     "node": ">=20"

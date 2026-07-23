@@ -1,0 +1,19 @@
+# Copy this into the MCP host configuration and replace every absolute path.
+# The session JSON contains browser credentials, so keep it outside the repository.
+# TAPD session cookies and dsc_token are acquired through tapd_refresh_session
+# and are never configured here.
+
+[mcp_servers.tapd]
+command = "node"
+args = ["/absolute/path/to/tapd-mcp/dist/src/index.js"]
+
+[mcp_servers.tapd.env]
+TAPD_WEB_BASE_URL = "https://www.tapd.cn"
+TAPD_MAX_REQUESTS_PER_MINUTE = "60"
+TAPD_REQUEST_TIMEOUT_MS = "20000"
+# Optional user-authored business guidance. If the path is absent, missing,
+# unreadable, or empty, TAPD MCP still starts with protocol/safety rules only.
+TAPD_USER_PROMPT_PATH = "/absolute/path/to/tapd-mcp/work-item-prompt.md"
+# Optional cross-platform local TAPD session cache. The JSON contains browser
+# session credentials; do not commit, share, or open it outside this MCP.
+TAPD_SESSION_STORE_PATH = "/absolute/path/to/tapd-mcp/session.json"

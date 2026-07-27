@@ -298,6 +298,29 @@ npm publish --access public
 
 发布前必须检查包内容中没有 `.env`、`session.json`、Cookie、Token、截图、日志、真实客户数据或私有接口抓包材料。`files` 白名单只发布运行所需的编译产物、README 和配置示例。
 
+### GitHub Actions 自动发布（OIDC）
+
+仓库内的 [`.github/workflows/publish.yml`](.github/workflows/publish.yml) 会在推送 `v*` 标签时，通过 npm Trusted Publishing 自动发布。工作流不保存 `NPM_TOKEN`，并会拒绝标签与 `package.json` 版本不一致的发布。
+
+首次包版本发布后，在 npmjs.com 打开 `@fwkt-zs/tapd-mcp` → **Settings** → **Trusted Publisher**，选择 GitHub Actions 并填写：
+
+| npm 字段 | 值 |
+| --- | --- |
+| Organization or user | `zhang180031` |
+| Repository | `tapd-mcp` |
+| Workflow filename | `publish.yml` |
+| Environment name | 留空 |
+| Allowed actions | `npm publish` |
+
+完成关联后，发布新版本只需让 `package.json` 版本和 Git 标签保持一致：
+
+```bash
+npm version patch
+git push origin main --follow-tags
+```
+
+GitHub-hosted runner 使用 Node.js 24 和 npm 11.5.1+ 完成 OIDC 交换；公共仓库发布公共包时，npm 会自动生成 provenance。确认自动发布成功后，建议在 npm 的 **Publishing access** 中选择 **Require two-factor authentication and disallow tokens**，并撤销用于首次发布的临时 Token。
+
 ## GitHub 发布前检查
 
 1. 确认 `git status --ignored` 中没有会话 JSON、`.env`、截图、日志或构建产物。

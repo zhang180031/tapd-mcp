@@ -35,18 +35,18 @@ Chrome 只用于会话交接：服务不会启动新的浏览器、创建额外 
 - MCP 客户端（如 Codex）能启动本地 Node.js 进程
 - 对目标 TAPD 空间有相应读写权限
 
-无需克隆仓库、`npm install` 或全局安装。将下面一行作为 MCP 服务命令即可；`npx` 会在首次启动下载 `@zhang180031/tapd-mcp`，后续复用本机缓存。
+无需克隆仓库、`npm install` 或全局安装。将下面一行作为 MCP 服务命令即可；`npx` 会在首次启动下载 `@fwkt-zs/tapd-mcp`，后续复用本机缓存。
 
 ```toml
 [mcp_servers.tapd]
 command = "npx"
-args = ["-y", "@zhang180031/tapd-mcp"]
+args = ["-y", "@fwkt-zs/tapd-mcp"]
 ```
 
 如果 MCP 客户端提供命令行添加入口，等价的服务命令是：
 
 ```bash
-npx -y @zhang180031/tapd-mcp
+npx -y @fwkt-zs/tapd-mcp
 ```
 
 包会将会话和可选业务提示词保存到当前操作系统的用户数据目录，而不是 `npx` 的临时目录或仓库：
@@ -66,7 +66,7 @@ npx -y @zhang180031/tapd-mcp
 ```toml
 [mcp_servers.tapd]
 command = "npx"
-args = ["-y", "@zhang180031/tapd-mcp"]
+args = ["-y", "@fwkt-zs/tapd-mcp"]
 
 [mcp_servers.tapd.env]
 TAPD_WEB_BASE_URL = "https://www.tapd.cn"
@@ -287,7 +287,7 @@ TAPD_E2E=1 TAPD_E2E_WORKSPACE_ID=12345678 npm run test:e2e:tapd
 
 ## 发布 npm 包
 
-发布账号需要在 npmjs.com 拥有 `@zhang180031` 作用域。包名使用 `@zhang180031/tapd-mcp`，因为无作用域的 `tapd-mcp` 已被其他发布者占用。
+发布账号需要在 npmjs.com 拥有 `@fwkt-zs` 作用域。包名使用 `@fwkt-zs/tapd-mcp`，因为无作用域的 `tapd-mcp` 已被其他发布者占用。
 
 ```bash
 npm run check

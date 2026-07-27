@@ -7,7 +7,7 @@
 
 [mcp_servers.tapd]
 command = "npx"
-args = ["-y", "@zhang180031/tapd-mcp"]
+args = ["-y", "@fwkt-zs/tapd-mcp"]
 
 [mcp_servers.tapd.env]
 TAPD_WEB_BASE_URL = "https://www.tapd.cn"

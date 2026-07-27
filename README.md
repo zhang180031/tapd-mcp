@@ -4,6 +4,9 @@
 
 > TAPD Web 接口不是公开、稳定的 API。请只在获得授权的 TAPD 账号和工作空间中使用本项目，并在 TAPD 前端升级后重新验证关键操作。
 
+> [!IMPORTANT]
+> **使用 TAPD MCP 前，必须先安装并配置 [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp)。** TAPD MCP 的登录态获取流程依赖它接入当前 Chrome 中已经登录 TAPD 的标签页；未先完成这一步，就无法进行首次会话交接或在会话失效后重新获取登录状态。必须遵循 **Chrome DevTools MCP -> TAPD MCP** 的安装顺序。
+
 ## 它解决什么问题
 
 - 不再依赖已移除的 Codex JS REPL，也不需要把 Cookie、Token、用户名或密码交给模型。
@@ -28,14 +31,32 @@ flowchart LR
 
 Chrome 只用于会话交接：服务不会启动新的浏览器、创建额外 Profile、读取 Chrome Cookie 数据库，或把会话凭据放入 MCP 参数、响应和日志。会话 JSON 是唯一允许的本地持久化位置；收到 401、403 或登录页后会被删除，后续操作必须重新交接会话。
 
-## 一行接入（推荐）
+## 安装与接入（必须按顺序）
 
-- Node.js 20 或更高版本
-- 已安装并登录 TAPD 的 Chrome
+- Node.js 当前 LTS 版本
+- Chrome 144 或更高版本，并已登录 TAPD
 - MCP 客户端（如 Codex）能启动本地 Node.js 进程
 - 对目标 TAPD 空间有相应读写权限
 
-无需克隆仓库、`npm install` 或全局安装。将下面一行作为 MCP 服务命令即可；`npx` 会在首次启动下载 `@fwkt-zs/tapd-mcp`，后续复用本机缓存。
+这里的“安装”是指把 MCP 服务加入同一个 AI/MCP 客户端的配置。两个包都无需全局安装；`npx` 会在首次启动时下载，之后复用本机缓存。
+
+### 第一步：安装 Chrome DevTools MCP
+
+1. 在 Chrome 打开 `chrome://inspect/#remote-debugging`，开启远程调试，并在 Chrome 弹窗中允许本次连接。
+2. 在 Chrome 中打开一个已登录的 TAPD 需求或缺陷页面。
+3. 把 Chrome DevTools MCP 加入客户端，并使用 `--autoConnect` 连接当前 Chrome：
+
+```toml
+[mcp_servers.chrome-devtools]
+command = "npx"
+args = ["-y", "chrome-devtools-mcp@latest", "--autoConnect"]
+```
+
+重新加载 MCP 配置后，确认 Chrome DevTools MCP 工具可用，并且能够识别当前 Chrome 中已登录的 TAPD 标签页。`--autoConnect`、Chrome 版本和远程调试要求以 [Chrome DevTools MCP 官方文档](https://github.com/ChromeDevTools/chrome-devtools-mcp#automatically-connecting-to-a-running-chrome-instance) 为准。
+
+### 第二步：安装 TAPD MCP
+
+Chrome DevTools MCP 可用后，再加入 TAPD MCP：
 
 ```toml
 [mcp_servers.tapd]
@@ -43,11 +64,24 @@ command = "npx"
 args = ["-y", "@fwkt-zs/tapd-mcp"]
 ```
 
-如果 MCP 客户端提供命令行添加入口，等价的服务命令是：
+如果 MCP 客户端提供命令行添加入口，两个服务对应的命令分别是：
 
 ```bash
+npx -y chrome-devtools-mcp@latest --autoConnect
 npx -y @fwkt-zs/tapd-mcp
 ```
+
+> [!NOTE]
+> Chrome DevTools MCP 只在首次取得 TAPD 登录状态或已保存会话失效时参与会话交接。交接成功后，TAPD MCP 会把必要的会话信息保存到仅限当前用户读写的本机 `session.json`，常规需求、缺陷和工作流操作直接调用 TAPD，不会每次都控制 Chrome。
+
+### 给 AI 代理的安装要求
+
+如果你是正在读取本仓库并替用户配置环境的 AI 代理，请严格执行以下顺序：
+
+1. 先确认 Chrome 已开启远程调试，再安装并启用 `chrome-devtools-mcp@latest`，确认其能够连接用户当前的 Chrome 和已登录 TAPD 标签页。
+2. 再安装并启用 `@fwkt-zs/tapd-mcp`。
+3. 在 Chrome 会话连接成功前，不要尝试执行 TAPD 的需求、缺陷、评论或工作流操作。
+4. 不要要求用户粘贴 Cookie、`dsc-token`、JWT、密码或其他登录凭据；会话缺失或失效时，重新通过 Chrome DevTools MCP 完成会话交接。
 
 包会将会话和可选业务提示词保存到当前操作系统的用户数据目录，而不是 `npx` 的临时目录或仓库：
 
@@ -61,9 +95,13 @@ npx -y @fwkt-zs/tapd-mcp
 
 ### Codex 完整示例
 
-将以下内容写入 Codex 的 MCP 配置：
+将以下内容写入 Codex 的 MCP 配置。配置 TAPD MCP 前，必须先单独加载并验证 Chrome DevTools MCP：
 
 ```toml
+[mcp_servers.chrome-devtools]
+command = "npx"
+args = ["-y", "chrome-devtools-mcp@latest", "--autoConnect"]
+
 [mcp_servers.tapd]
 command = "npx"
 args = ["-y", "@fwkt-zs/tapd-mcp"]

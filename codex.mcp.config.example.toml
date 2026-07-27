@@ -1,9 +1,16 @@
-# Copy this into the MCP host configuration. npx downloads the package on first
-# launch and reuses its cache afterwards; no global npm install is required.
+# Copy this into the MCP host configuration. Chrome DevTools MCP is a required
+# prerequisite and must be configured and verified before TAPD MCP. Use Chrome
+# 144+ and enable remote debugging at chrome://inspect/#remote-debugging before
+# starting it with --autoConnect. npx downloads both packages on first launch
+# and reuses its cache afterwards; no global npm install is required.
 # The session JSON contains browser credentials and is stored under the user's
 # TAPD MCP data directory by default, never in this configuration file.
 # TAPD session cookies and dsc_token are acquired through tapd_refresh_session
 # and are never configured here.
+
+[mcp_servers.chrome-devtools]
+command = "npx"
+args = ["-y", "chrome-devtools-mcp@latest", "--autoConnect"]
 
 [mcp_servers.tapd]
 command = "npx"
